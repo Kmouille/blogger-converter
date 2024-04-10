@@ -1,0 +1,37 @@
+body {
+	font-family: Arial, sans-serif;
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+}
+
+.page {
+	width: 420mm; /* 2 x A4 width */
+	height: 297mm; /* A4 height */
+	padding: 20mm; /* 20mm padding around the content */
+	box-sizing: border-box;
+	margin: auto;
+	max-width: 100%; /* Limit display width */
+}
+
+img {
+	max-width: 100%;
+	height: auto;
+}
+
+@media print {
+	body {
+		margin: 0;
+		padding: 0;
+	}
+	.page {
+		margin: 0;
+		padding: 0;
+		border: initial;
+		width: initial;
+		min-height: initial;
+		box-shadow: initial;
+		background: initial;
+		page-break-after: always;
+	}
+}
