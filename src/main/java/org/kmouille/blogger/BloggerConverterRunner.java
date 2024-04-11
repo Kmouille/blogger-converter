@@ -6,6 +6,7 @@ import java.net.URISyntaxException;
 
 import javax.xml.parsers.ParserConfigurationException;
 
+import org.kmouille.blogger.extractor.BloggerArticleExtractor;
 import org.xml.sax.SAXException;
 
 public class BloggerConverterRunner {
@@ -24,12 +25,16 @@ public class BloggerConverterRunner {
 
 	public static void main(String[] args)
 			throws SAXException, IOException, ParserConfigurationException, URISyntaxException {
+
+		var unJourBlog = new BloggerArticleExtractor().extractBlog(new File(xmlFolder, xmlUnJourFile));
+
 		var bloggerConverter = new BloggerConverter();
-		bloggerConverter.convert(new File(xmlFolder, xmlUnJourFile), bookUnJourFolderOffline);
-		bloggerConverter.convert(new File(xmlFolder, xmlUnJourFile), bookUnJourFolder, true);
-		bloggerConverter.convert(new File(xmlFolder, xmlFile), bookFolder, true);
-		bloggerConverter.convert(new File(xmlFolder, xmlFile), bookFolderOffline);
-		bloggerConverter.convert(new File(xmlFolder, xmlFileSmall), bookFolderSmall);
+		bloggerConverter.convert(unJourBlog, bookUnJourFolderOffline);
+
+		// bloggerConverter.convert(new File(xmlFolder, xmlUnJourFile), bookUnJourFolder, true);
+		// bloggerConverter.convert(new File(xmlFolder, xmlFile), bookFolder, true);
+		// bloggerConverter.convert(new File(xmlFolder, xmlFile), bookFolderOffline);
+		// bloggerConverter.convert(new File(xmlFolder, xmlFileSmall), bookFolderSmall);
 	}
 
 }

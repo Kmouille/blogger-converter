@@ -1,5 +1,6 @@
 package org.kmouille.blogger;
 
+import static org.apache.commons.lang3.StringUtils.abbreviate;
 import static org.apache.commons.lang3.StringUtils.abbreviateMiddle;
 import static org.apache.commons.lang3.StringUtils.containsAny;
 import static org.apache.commons.lang3.StringUtils.endsWithAny;
@@ -19,24 +20,22 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
 import java.util.stream.Collectors;
 
-import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.TextNode;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
+import org.kmouille.blogger.domain.Article;
+import org.kmouille.blogger.domain.Blog;
+import org.kmouille.blogger.domain.GeoLoc;
+import org.tinylog.Logger;
 import org.xml.sax.SAXException;
 
 public class BloggerConverter {
@@ -49,29 +48,26 @@ public class BloggerConverter {
 
 	private boolean cleanupUnusedFiles = false;
 
-	void convert(File bloggerXmlFile, File bookDestinationFolder)
+	void convert(Blog blog, File bookDestinationFolder)
 			throws SAXException, IOException, ParserConfigurationException, URISyntaxException {
-		convert(bloggerXmlFile, bookDestinationFolder, false);
+		convert(blog, bookDestinationFolder, false);
 	}
 
-	void convert(File bloggerXmlFile, File bookDestinationFolder, boolean downloadImages)
+	void convert(Blog blog, File bookDestinationFolder, boolean downloadImages)
 			throws SAXException, IOException, ParserConfigurationException, URISyntaxException {
 
-		var javaxDocument = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(bloggerXmlFile);
-
-		var articlesByYear = extractBlogArticles(javaxDocument);
-		var websiteTitle = extractBlogTitle(javaxDocument);
+		var articlesByYear = blog.articles().stream()
+				.collect(Collectors.groupingBy(a -> a.publishedDate().getYear()));
 
 		var welcomePageIndexHtml = new StringBuilder();
 
-		List<String> leafletMarkers = new ArrayList<String>();
+		List<String> leafletMarkers = new ArrayList<>();
 
-		// Write 1 HTML files for each article
 		for (var entry : articlesByYear.entrySet()) {
 			var year = entry.getKey();
 			var articles = entry.getValue();
 
-			System.out.println("[REPORT] Writing " + articles.size() + " year " + year + " articles");
+			Logger.info("[REPORT] Writing year {} - {} articles", year, articles.size());
 
 			var yearSubFolder = new File(bookDestinationFolder, year + "_articles");
 			yearSubFolder.mkdirs();
@@ -82,7 +78,7 @@ public class BloggerConverter {
 				var imageFiles = new ArrayList<File>();
 				var imageUrls = new ArrayList<String>();
 
-				var htmlFilename = article.publishedDate.format(DateTimeFormatter.ofPattern("YYYYMMdd"))
+				var htmlFilename = article.publishedDate().format(DateTimeFormatter.ofPattern("YYYYMMdd"))
 						+ "-" + sanitizeFilename(article.title());
 
 				var resourceFolderName = FilenameUtils.getBaseName(htmlFilename);
@@ -90,29 +86,19 @@ public class BloggerConverter {
 				resourceFolder.mkdirs();
 
 				var linkTag = "<a href=\"" + year + "_articles/" + htmlFilename + "\" target=\"_blank\">"
-						+ article.publishedDate.format(DateTimeFormatter.ofPattern("YYYY-MM-dd")) + " - "
+						+ article.publishedDate().format(DateTimeFormatter.ofPattern("YYYY-MM-dd")) + " - "
 						+ article.title() + "</a>";
 
 				// Add link to the welcome page
 				yearIndexHtml.append("<li>" + linkTag + "</li>");
 
-				var jsoupArticleDoc = Jsoup.parse("<html>"
-						+ "<head><title>" + article.title() + "</title>"
-						+ "<link rel=\"stylesheet\" href=\"../styles.css\">"
-						+ "</head>"
-						+ "<body>"
-						+ "<div class=\"page\">"
-						+ "<h1>" + article.title() + "</h1>"
-						+ article.content()
-						+ "</div>"
-						+ "</body>"
-						+ "</html>");
+				var jsoupArticleDoc = Jsoup.parse(article.agnosticContent().content());
 
 				// TODO Download images not wrapped into a link?
 				for (var img : jsoupArticleDoc.select("img")) {
 					if (img.parents().select("a").isEmpty()) {
-						System.out.println(" MISSING Found <img> tag without <a> parent in " + article.title()
-								+ " (src: " + img.attr("src") + ")");
+						Logger.info(" MISSING Found <img> tag without <a> parent in {} (src: {})",
+								article.title(), abbreviate(img.attr("src"), 100));
 					}
 				}
 
@@ -141,18 +127,17 @@ public class BloggerConverter {
 						var resizedName = abbreviateMiddle(resourceFileName, "...", abbreviateMaxLength);
 						resourceFileName = truncate(substringBeforeLast(resourceFileName, "="), filenameMaxLength)
 								+ ".jpg";
-						System.out.println(" RESIZED " + resizedName
-								+ " BECAME " + "./" + resourceFolderName + "/" + resourceFileName);
+						Logger.debug(" RESIZED {} BECAME {}/{}", resizedName, resourceFolderName, resourceFileName);
 						// Change the URL not to ask for the resized image to download hires img
 						imageUrl = substringBeforeLast(imageUrl, "=");
 					} else if (!endsWithAny(resourceFileName.toLowerCase(), ".png", ".jpeg", ".jpg", ".bmp")) {
 						var unsupportedName = abbreviateMiddle(resourceFileName, "...", abbreviateMaxLength);
 						// QUESTION How not to suppose JPG?
 						resourceFileName = substring(resourceFileName, 0, filenameMaxLength) + ".jpg";
-						System.out.println(" UNSUPPORTED " + unsupportedName
-								+ " BECAME " + "./" + resourceFolderName + "/" + resourceFileName);
+						Logger.debug(" UNSUPPORTED {} BECAME {}/{}",
+								unsupportedName, resourceFolderName, resourceFileName);
 					} else if (containsAny(resourceFileName, "=S", "=W", "=H")) {
-						System.out.println(" FIX CASE SENSITIVE RESIZE PARAMS");
+						Logger.warn("FIX CASE SENSITIVE RESIZE PARAMS");
 					}
 
 					resourceFileName = decodeUrlFormattedName(resourceFileName);
@@ -184,10 +169,10 @@ public class BloggerConverter {
 					for (File legacyFile : resourceFolder.listFiles()) {
 						if (!imageFiles.contains(legacyFile)) {
 							if (cleanupUnusedFiles) {
-								System.out.println("[REPORT] REMOVE UNUSED " + legacyFile);
+								Logger.info("[REPORT] REMOVE UNUSED {}", legacyFile);
 								legacyFile.delete();
 							} else {
-								System.out.println("[REPORT] SHOULD REMOVE UNUSED " + legacyFile);
+								Logger.info("[REPORT] SHOULD REMOVE UNUSED {}", legacyFile);
 							}
 						}
 					}
@@ -225,6 +210,7 @@ public class BloggerConverter {
 
 		// Create HTML for the welcome page
 		// TODO Improve style
+		var websiteTitle = blog.title();
 		var welcomePageHtml = new StringBuilder("<html>"
 				+ "<head>"
 				+ "<title>" + websiteTitle + "</title>"
@@ -246,12 +232,12 @@ public class BloggerConverter {
 			writer.write(Jsoup.parse(welcomePageHtml.toString()).toString());
 		}
 
-		System.out.println("Conversion completed successfully.");
+		Logger.info("Conversion completed successfully.");
 
 	}
 
 	protected String leafletMarker(GeoLoc geoLoc, String content) {
-		return "L.marker([" + geoLoc.lat + ", " + geoLoc.lon + "])"
+		return "L.marker([" + geoLoc.lat() + ", " + geoLoc.lon() + "])"
 				+ ".addTo(map).bindPopup('" + escapeEcmaScript(content) + "');";
 	}
 
@@ -277,65 +263,9 @@ public class BloggerConverter {
 			while (resultFileName.contains("%")) {
 				resultFileName = URLDecoder.decode(resultFileName, StandardCharsets.UTF_8);
 			}
-			System.out.println(" ENCODED " + fileName + " BECAME " + resultFileName);
+			Logger.debug(" ENCODED {} BECAME {}", fileName, resultFileName);
 		}
 		return resultFileName;
-	}
-
-	protected String extractBlogTitle(Document doc) {
-		return doc.getElementsByTagName("title").item(0).getTextContent().trim();
-	}
-
-	protected Map<Integer, List<Article>> extractBlogArticles(Document doc) {
-		// Using sorted map for a natural order of the years keys
-		Map<Integer, List<Article>> articlesByYear = new TreeMap<>();
-		var nodeList = doc.getElementsByTagName("entry");
-		for (int i = 0; i < nodeList.getLength(); i++) {
-			var isArticle = false;
-			List<String> tags = new ArrayList<>();
-
-			var element = (Element) nodeList.item(i);
-			var categories = element.getElementsByTagName("category");
-			for (int j = 0; j < categories.getLength(); j++) {
-				var category = (Element) categories.item(j);
-				var categoryScheme = category.getAttribute("scheme");
-				var categoryTerm = category.getAttribute("term");
-				if (categoryScheme.contains("http://www.blogger.com/atom/ns#")) {
-					tags.add(categoryTerm);
-				}
-				if (categoryScheme.contains("#kind") && categoryTerm.contains("#post")) {
-					isArticle = true;
-				}
-			}
-
-			if (isArticle) {
-				var title = element.getElementsByTagName("title").item(0).getTextContent().trim();
-				var articlePublished = element.getElementsByTagName("published").item(0).getTextContent().trim();
-				var content = element.getElementsByTagName("content").item(0).getTextContent().trim();
-				var publishedDate = LocalDateTime.parse(articlePublished, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
-
-				GeoLoc geoLoc = null;
-				if (element.getElementsByTagName("georss:point").item(0) != null) {
-					var geoLocString = element.getElementsByTagName("georss:point").item(0).getTextContent().trim();
-					var geoLocStringArray = geoLocString.split(" ");
-					var lat = Double.parseDouble(geoLocStringArray[0]);
-					var lon = Double.parseDouble(geoLocStringArray[1]);
-					geoLoc = new GeoLoc(lat, lon);
-				} else {
-					System.out.println("[REPORT] NO GEOLOC " + title);
-				}
-
-				if (tags.isEmpty()) {
-					System.out.println("[REPORT] NO TAG " + title);
-				}
-
-				// Add article to corresponding year
-				articlesByYear.computeIfAbsent(publishedDate.getYear(), key -> new ArrayList<>())
-						.add(new Article(title, publishedDate, content, geoLoc));
-
-			}
-		}
-		return articlesByYear;
 	}
 
 	protected static String sanitizeFilename(String value) {
@@ -356,12 +286,12 @@ public class BloggerConverter {
 			throws IOException, URISyntaxException {
 		var resourceFile = new File(resourceFolder, resourceFileName);
 		if (resourceFile.exists()) {
-			// System.out.println("Already existing " + resourceFolder.getName() + "/" + resourceFileName);
+			// Logger.info("Already existing " + resourceFolder.getName() + "/" + resourceFileName);
 		} else {
 			// Establish a connection to the image URL
 			var url = new URI(imageUrl).toURL();
 			var connection = url.openConnection();
-			System.out.println("Downloading " + imageUrl);
+			Logger.debug("Downloading {}", imageUrl);
 			try (var is = connection.getInputStream()) {
 				FileUtils.writeByteArrayToFile(
 						resourceFile, is.readAllBytes());
@@ -388,15 +318,4 @@ public class BloggerConverter {
 		}
 	}
 
-	static record Article(
-			String title,
-			LocalDateTime publishedDate,
-			String content,
-			GeoLoc location) {
-
-	}
-
-	static record GeoLoc(double lat, double lon) {
-
-	}
 }
