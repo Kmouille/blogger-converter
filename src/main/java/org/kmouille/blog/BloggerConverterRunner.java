@@ -1,13 +1,11 @@
-package org.kmouille.blogger;
+package org.kmouille.blog;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
 
-import javax.xml.parsers.ParserConfigurationException;
-
-import org.kmouille.blogger.extractor.BloggerArticleExtractor;
-import org.xml.sax.SAXException;
+import org.kmouille.blog.extractor.BlogArticleExtractorFactory;
+import org.kmouille.blog.extractor.BlogPlatform;
 
 public class BloggerConverterRunner {
 
@@ -23,13 +21,13 @@ public class BloggerConverterRunner {
 	private static final File bookUnJourFolder = new File("C:\\perso\\dev\\BLOG_Book\\BookUnjour");
 	private static final File bookUnJourFolderOffline = new File("C:\\perso\\dev\\BLOG_Book\\BookUnjourOffline");
 
-	public static void main(String[] args)
-			throws SAXException, IOException, ParserConfigurationException, URISyntaxException {
+	public static void main(String[] args) throws IOException, URISyntaxException {
 
-		var unJourBlog = new BloggerArticleExtractor().extractBlog(new File(xmlFolder, xmlUnJourFile));
+		var unJourBlog = BlogArticleExtractorFactory.createExtractor(BlogPlatform.BLOGGER)
+				.extractBlog(new File(xmlFolder, xmlUnJourFile));
 
-		var bloggerConverter = new BloggerConverter();
-		bloggerConverter.convert(unJourBlog, bookUnJourFolderOffline);
+		var bloggerConverter = new BlogConverter();
+		bloggerConverter.convert(unJourBlog, bookUnJourFolderOffline, false);
 
 		// bloggerConverter.convert(new File(xmlFolder, xmlUnJourFile), bookUnJourFolder, true);
 		// bloggerConverter.convert(new File(xmlFolder, xmlFile), bookFolder, true);

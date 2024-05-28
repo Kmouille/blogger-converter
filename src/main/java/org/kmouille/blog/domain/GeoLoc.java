@@ -1,4 +1,4 @@
-package org.kmouille.blogger.domain;
+package org.kmouille.blog.domain;
 
 public record GeoLoc(
 		double lat,

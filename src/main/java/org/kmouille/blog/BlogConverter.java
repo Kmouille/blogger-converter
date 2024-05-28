@@ -1,4 +1,4 @@
-package org.kmouille.blogger;
+package org.kmouille.blog;
 
 import static org.apache.commons.lang3.StringUtils.abbreviate;
 import static org.apache.commons.lang3.StringUtils.abbreviateMiddle;
@@ -26,19 +26,20 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import javax.xml.parsers.ParserConfigurationException;
-
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.jsoup.Jsoup;
+import org.jsoup.nodes.Comment;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Node;
 import org.jsoup.nodes.TextNode;
-import org.kmouille.blogger.domain.Article;
-import org.kmouille.blogger.domain.Blog;
-import org.kmouille.blogger.domain.GeoLoc;
+import org.jsoup.select.NodeVisitor;
+import org.kmouille.blog.domain.Article;
+import org.kmouille.blog.domain.Blog;
+import org.kmouille.blog.domain.GeoLoc;
 import org.tinylog.Logger;
-import org.xml.sax.SAXException;
 
-public class BloggerConverter {
+public class BlogConverter {
 
 	/** Abbreviate filename max length for logging purpose. */
 	private int abbreviateMaxLength = 30;
@@ -48,24 +49,28 @@ public class BloggerConverter {
 
 	private boolean cleanupUnusedFiles = false;
 
-	void convert(Blog blog, File bookDestinationFolder)
-			throws SAXException, IOException, ParserConfigurationException, URISyntaxException {
+	void convert(Blog blog, File bookDestinationFolder) throws IOException, URISyntaxException {
+		bookDestinationFolder.mkdirs();
 		convert(blog, bookDestinationFolder, false);
 	}
 
-	void convert(Blog blog, File bookDestinationFolder, boolean downloadImages)
-			throws SAXException, IOException, ParserConfigurationException, URISyntaxException {
+	void convert(Blog blog, File bookDestinationFolder, boolean downloadImages) throws IOException, URISyntaxException {
 
 		var articlesByYear = blog.articles().stream()
 				.collect(Collectors.groupingBy(a -> a.publishedDate().getYear()));
 
+		var sortedYears = new ArrayList<>(articlesByYear.keySet());
+		sortedYears.sort(Comparator.naturalOrder());
+
 		var welcomePageIndexHtml = new StringBuilder();
+
+		// Could implement a general cleaner.
+		// var htmlCleaner = new Cleaner(Safelist.basicWithImages());
 
 		List<String> leafletMarkers = new ArrayList<>();
 
-		for (var entry : articlesByYear.entrySet()) {
-			var year = entry.getKey();
-			var articles = entry.getValue();
+		for (var year : sortedYears) {
+			var articles = articlesByYear.get(year);
 
 			Logger.info("[REPORT] Writing year {} - {} articles", year, articles.size());
 
@@ -121,9 +126,18 @@ public class BloggerConverter {
 					var resourceFileName = substringAfterLast(imageUrl, "/");
 
 					// Might have requests like:
+					// -> url...?fit=...
+					if (containsAny(resourceFileName, "?")) {
+						var paramedName = resourceFileName;
+						resourceFileName = substringBeforeLast(resourceFileName, "?fit");
+						Logger.debug(" URL PARAMED {} BECAME {}/{}", paramedName, resourceFolderName, resourceFileName);
+						// Change the URL not to ask for the resized image to download hires img
+						imageUrl = substringBeforeLast(imageUrl, "?fit");
+					}
+					// Might have requests like:
 					// -> =s320
 					// -> =w240-h320
-					if (containsAny(resourceFileName, "=s", "=w", "=h")) {
+					else if (containsAny(resourceFileName, "=s", "=w", "=h")) {
 						var resizedName = abbreviateMiddle(resourceFileName, "...", abbreviateMaxLength);
 						resourceFileName = truncate(substringBeforeLast(resourceFileName, "="), filenameMaxLength)
 								+ ".jpg";
@@ -158,10 +172,14 @@ public class BloggerConverter {
 					// TODO Add parameters to resize images or not
 					img.attr("width", "480");
 					img.removeAttr("height");
+					img.removeAttr("class");
+					img.removeAttr("alt");
 				}
 				trimTextNodes(jsoupArticleDoc.root());
+				removeComments(jsoupArticleDoc);
 				try (var writer = new FileWriter(new File(yearSubFolder, htmlFilename))) {
 					writer.write(jsoupArticleDoc.toString());
+					// writer.write(htmlCleaner.clean(jsoupArticleDoc).toString());
 				}
 
 				// clean directory ONLY if download images is activated
@@ -293,9 +311,11 @@ public class BloggerConverter {
 			var connection = url.openConnection();
 			Logger.debug("Downloading {}", imageUrl);
 			try (var is = connection.getInputStream()) {
-				FileUtils.writeByteArrayToFile(
-						resourceFile, is.readAllBytes());
+				FileUtils.writeByteArrayToFile(resourceFile, is.readAllBytes());
+			} catch (Exception e) {
+				Logger.debug("Downloading failed {}", imageUrl, e);
 			}
+
 		}
 		return resourceFile;
 	}
@@ -305,7 +325,7 @@ public class BloggerConverter {
 	public static void trimTextNodes(org.jsoup.nodes.Element element) {
 		for (var childNode : element.childNodes()) {
 			if (childNode instanceof TextNode textNode) {
-				// No more trim cause it trims whitespace befose tags...
+				// No more trim cause it trims whitespace before tags...
 				// var trimmedText = textNode.text().trim();
 				var trimmedText = textNode.text();
 				while (startsWith(trimmedText, ";")) {
@@ -316,6 +336,23 @@ public class BloggerConverter {
 				trimTextNodes(elementChild); // Recursively trim child elements
 			}
 		}
+	}
+
+	public static void removeComments(Document jsoupArticleDoc) {
+		jsoupArticleDoc.traverse(new NodeVisitor() {
+
+			@Override
+			public void head(Node node, int depth) {
+				if (node instanceof Comment) {
+					node.remove();
+				}
+			}
+
+			@Override
+			public void tail(Node node, int depth) {
+				// No operation
+			}
+		});
 	}
 
 }

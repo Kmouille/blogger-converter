@@ -1,4 +1,4 @@
-package org.kmouille.blogger.domain;
+package org.kmouille.blog.domain;
 
 import java.util.List;
 

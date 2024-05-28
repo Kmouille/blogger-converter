@@ -1,9 +1,9 @@
-package org.kmouille.blogger.extractor;
+package org.kmouille.blog.extractor.blogger;
 
 import java.util.List;
 
 import org.jsoup.Jsoup;
-import org.kmouille.blogger.domain.ArticleContent;
+import org.kmouille.blog.domain.ArticleContent;
 
 public class BloggerArticleContentExtractor {
 

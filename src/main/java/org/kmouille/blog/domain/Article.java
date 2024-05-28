@@ -1,4 +1,4 @@
-package org.kmouille.blogger.domain;
+package org.kmouille.blog.domain;
 
 import java.time.LocalDateTime;
 import java.util.List;
