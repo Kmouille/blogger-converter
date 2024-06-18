@@ -16,6 +16,9 @@ import org.kmouille.blog.extractor.BlogArticleExtractor;
 import org.kmouille.blog.extractor.exception.BlogException;
 import org.tinylog.Logger;
 
+/**
+ * @see ideas in https://www.henryleach.com/2021/10/moving-from-blogger-to-hugo/
+ */
 public class BloggerArticleExtractor implements BlogArticleExtractor {
 
 	@Override

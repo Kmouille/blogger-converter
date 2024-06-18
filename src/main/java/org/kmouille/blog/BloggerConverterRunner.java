@@ -9,7 +9,8 @@ import org.kmouille.blog.extractor.BlogPlatform;
 
 public class BloggerConverterRunner {
 
-	private static final String xmlFile = "blog-04-09-2024.xml";
+	// private static final String xmlFile = "blog-04-09-2024.xml";
+	private static final String xmlFile = "blog-07-28-2024.xml";
 	private static final String xmlFileSmall = "blog-03-12-2024_01_small.xml";
 
 	private static final String xmlUnJourFile = "blog-un-jour-04-09-2024.xml";
@@ -23,19 +24,10 @@ public class BloggerConverterRunner {
 
 	public static void main(String[] args) throws IOException, URISyntaxException {
 		var bloggerConverter = new BlogConverter();
-
-		// var unJourBlog = BlogArticleExtractorFactory.createExtractor(BlogPlatform.BLOGGER)
-		// .extractBlog(new File(xmlFolder, xmlUnJourFile));
-		//
-		// bloggerConverter.convert(unJourBlog, bookUnJourFolderOffline, false);
-
 		var bloggerBlog = BlogArticleExtractorFactory.createExtractor(BlogPlatform.BLOGGER)
 				.extractBlog(new File(xmlFolder, xmlFile));
 		bloggerConverter.convert(bloggerBlog, bookFolder, false);
-
-		// bloggerConverter.convert(new File(xmlFolder, xmlFile), bookFolder, true);
-		// bloggerConverter.convert(new File(xmlFolder, xmlFile), bookFolderOffline);
-		// bloggerConverter.convert(new File(xmlFolder, xmlFileSmall), bookFolderSmall);
+		bloggerConverter.convert(bloggerBlog, bookFolderOffline, false);
 	}
 
 }
