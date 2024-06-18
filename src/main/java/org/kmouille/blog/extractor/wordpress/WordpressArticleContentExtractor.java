@@ -31,6 +31,11 @@ public class WordpressArticleContentExtractor {
 		}
 
 		// TODO replace figCaption by a-img-p
+		// <div class="wp-block-image"><figure class="aligncenter"><a href="
+
+		// html.select("div:has(figure)").unwrap();
+		// html.select("figcaption").unwrap();
+		// html.select("figure").unwrap();
 
 		// TODO Des fois une image inexistante a un lien vers un article de type attachment avec un parent
 		// <title><![CDATA[mini_20190802_111442-1]]></title>

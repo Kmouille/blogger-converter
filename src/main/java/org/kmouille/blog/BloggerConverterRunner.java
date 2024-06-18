@@ -22,14 +22,17 @@ public class BloggerConverterRunner {
 	private static final File bookUnJourFolderOffline = new File("C:\\perso\\dev\\BLOG_Book\\BookUnjourOffline");
 
 	public static void main(String[] args) throws IOException, URISyntaxException {
-
-		var unJourBlog = BlogArticleExtractorFactory.createExtractor(BlogPlatform.BLOGGER)
-				.extractBlog(new File(xmlFolder, xmlUnJourFile));
-
 		var bloggerConverter = new BlogConverter();
-		bloggerConverter.convert(unJourBlog, bookUnJourFolderOffline, false);
 
-		// bloggerConverter.convert(new File(xmlFolder, xmlUnJourFile), bookUnJourFolder, true);
+		// var unJourBlog = BlogArticleExtractorFactory.createExtractor(BlogPlatform.BLOGGER)
+		// .extractBlog(new File(xmlFolder, xmlUnJourFile));
+		//
+		// bloggerConverter.convert(unJourBlog, bookUnJourFolderOffline, false);
+
+		var bloggerBlog = BlogArticleExtractorFactory.createExtractor(BlogPlatform.BLOGGER)
+				.extractBlog(new File(xmlFolder, xmlFile));
+		bloggerConverter.convert(bloggerBlog, bookFolder, false);
+
 		// bloggerConverter.convert(new File(xmlFolder, xmlFile), bookFolder, true);
 		// bloggerConverter.convert(new File(xmlFolder, xmlFile), bookFolderOffline);
 		// bloggerConverter.convert(new File(xmlFolder, xmlFileSmall), bookFolderSmall);
