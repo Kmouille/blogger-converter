@@ -10,7 +10,7 @@ import org.kmouille.blog.extractor.BlogArticleExtractorFactory;
 import org.kmouille.blog.extractor.BlogPlatform;
 import org.xml.sax.SAXException;
 
-public class BlogConverterRunner {
+public class WordpressConverterRunner {
 
 	private static final String xmlFile = "4lamaison.WordPress.2024-05-28.xml";
 	// private static final String xmlFile = "4lamaison.WordPress.2024-05-28-small.xml";

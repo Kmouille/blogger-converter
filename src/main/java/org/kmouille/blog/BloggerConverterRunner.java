@@ -9,16 +9,13 @@ import org.kmouille.blog.extractor.BlogPlatform;
 
 public class BloggerConverterRunner {
 
-	// private static final String xmlFile = "blog-04-09-2024.xml";
-	private static final String xmlFile = "blog-07-28-2024.xml";
-	private static final String xmlFileSmall = "blog-03-12-2024_01_small.xml";
+	private static final String xmlFile = "blog-08-04-2024.xml";
 
 	private static final String xmlUnJourFile = "blog-un-jour-04-09-2024.xml";
 
 	private static final File xmlFolder = new File("C:\\perso\\dev\\BLOG_Book");
 	private static final File bookFolder = new File("C:\\perso\\dev\\BLOG_Book\\Book");
 	private static final File bookFolderOffline = new File("C:\\perso\\dev\\BLOG_Book\\BookOffline");
-	private static final File bookFolderSmall = new File("C:\\perso\\dev\\BLOG_Book\\Book_small");
 	private static final File bookUnJourFolder = new File("C:\\perso\\dev\\BLOG_Book\\BookUnjour");
 	private static final File bookUnJourFolderOffline = new File("C:\\perso\\dev\\BLOG_Book\\BookUnjourOffline");
 
@@ -26,7 +23,7 @@ public class BloggerConverterRunner {
 		var bloggerConverter = new BlogConverter();
 		var bloggerBlog = BlogArticleExtractorFactory.createExtractor(BlogPlatform.BLOGGER)
 				.extractBlog(new File(xmlFolder, xmlFile));
-		bloggerConverter.convert(bloggerBlog, bookFolder, false);
+		bloggerConverter.convert(bloggerBlog, bookFolder, true);
 		bloggerConverter.convert(bloggerBlog, bookFolderOffline, false);
 	}
 
